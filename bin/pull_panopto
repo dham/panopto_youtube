@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+parser = ArgumentParser(description="""Given the URL of a Panopto RSS feed, download all the MP4s in that feed.""",
+                        epilog="""""",
+                        formatter_class=RawDescriptionHelpFormatter)
+parser.add_argument("feed", action="store", nargs=1,
+                   help="URL of the Panopto RSS feed to pull.")
+parser.add_argument("--output-dir", "-o", action="store", nargs=1, default=["panopto_videos"],
+                   help="Output to the named directory instead of panopto_videos.", dest="output_dir")
+
+args = parser.parse_args()
+
+
