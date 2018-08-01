@@ -1,14 +1,56 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from urllib.request import urlopen, urlretrieve
+from urllib.error import HTTPError
+import xml.etree.ElementTree as ET
+import os
+
 
 parser = ArgumentParser(description="""Given the URL of a Panopto RSS feed, download all the MP4s in that feed.""",
                         epilog="""""",
                         formatter_class=RawDescriptionHelpFormatter)
-parser.add_argument("feed", action="store", nargs=1,
+parser.add_argument("feed", action="store", 
                    help="URL of the Panopto RSS feed to pull.")
-parser.add_argument("--output-dir", "-o", action="store", nargs=1, default=["panopto_videos"],
+parser.add_argument("--output-dir", "-o", action="store",  default="panopto_videos",
                    help="Output to the named directory instead of panopto_videos.", dest="output_dir")
 
 args = parser.parse_args()
 
+try:
+    request = urlopen(args.feed)
+except HTTPError as e:
+    if e.code == 400:
+        log.error("url: %s not found." % args.feed)
+        sys.exit(1)
+    raise
 
+xml = request.read()
+
+root = ET.fromstring(xml)
+
+if root.tag != 'rss':
+    raise ValueError("Not an rss document")
+
+channel = root.getchildren()[0]
+
+if channel.tag != 'channel':
+    raise ValueError("Failed to find the channel tag")
+
+if not os.path.isdir(args.output_dir):
+    os.mkdir(args.output_dir)
+
+videos = []
+for child in channel.getchildren():
+    if child.tag == 'item':
+        title = ''
+        url = ''
+        for element in child.getchildren():
+            if element.tag == 'title':
+                title = element.text
+            elif element.tag == 'guid':
+                url = element.text
+        if not (title and url):
+            raise ValueError("Video missing title or url")
+        print(url, os.path.join(args.output_dir, title.replace('/', '-').replace(' ', '_')))
+        urlretrieve(url, os.path.join(args.output_dir, title.replace('/', '-').replace(' ', '_')))
+            
