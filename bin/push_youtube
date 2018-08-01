@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import pandas
+import sys
+import os
+from youtube_upload.main import main as youtube_upload
+
+parser = ArgumentParser(description="""Upload previously downloaded panopto videos to youtube.""",
+                        epilog="""""",
+                        formatter_class=RawDescriptionHelpFormatter)
+parser.add_argument("infile", action="store", 
+                   help="CSV file containing video names, titles, authors, descriptions.")
+parser.add_argument("--input-dir", "-o", action="store",  default="panopto_videos",
+                   help="Input from the named directory instead of panopto_videos.", dest="input_dir")
+parser.add_argument("--client-secrets", action="store", help="Client secret json file. See the youtube-upload documentation.")
+parser.add_argument("--playlist", action="store", help="Playlist to upload to.")
+parser.add_argument("--startat", action="store", help="Index number to start at.", default=0, type=int)
+
+args = parser.parse_args()
+
+infile = pandas.read_csv(args.infile)
+
+for i, row in infile.iterrows():
+    if i < args.startat:
+        continue
+    
+    title = row["title"]
+
+    description = """{author}
+
+Given at PETSc '18 http://www.mcs.anl.gov/petsc/meetings/2018/index.html
+
+{abstract}
+""".format(author=row["authors"], abstract=row["abstract"])
+
+    filename = os.path.join(args.input_dir, row["video"])
+    
+    argv=[
+        "--title="+title,
+        "--description="+description,
+        "--playlist="+args.playlist,
+        "--client-secrets="+args.client_secrets,
+        filename]
+    
+    youtube_upload(argv)
+
+    
